@@ -429,16 +429,7 @@ def _dashboard_command(
     model_dir: Optional[Path] = None,
 ) -> Optional[List[str]]:
     if action == "update-data":
-        command = [
-            _powershell_executable(),
-            "-NoProfile",
-            "-ExecutionPolicy",
-            "Bypass",
-            "-File",
-            "scripts/update_data.ps1",
-            "-Game",
-            game_code,
-        ]
+        command = [*_lottery_cli_command(), "workflow-update", "--game", game_code]
         _append_dashboard_path_options(
             command,
             data_dir=data_dir,
@@ -450,18 +441,9 @@ def _dashboard_command(
     if action not in {"daily", "generate"}:
         return None
 
-    command = [
-        _powershell_executable(),
-        "-NoProfile",
-        "-ExecutionPolicy",
-        "Bypass",
-        "-File",
-        "scripts/daily.ps1",
-        "-Game",
-        game_code,
-    ]
+    command = [*_lottery_cli_command(), "workflow-daily", "--game", game_code]
     if action == "generate":
-        command.append("-SkipNormalize")
+        command.append("--skip-update")
     command.extend(_dashboard_daily_options(game_code, options))
     _append_dashboard_path_options(
         command,
@@ -481,28 +463,32 @@ def _append_dashboard_path_options(
     model_dir: Optional[Path] = None,
 ) -> None:
     for flag, path in (
-        ("-DataDir", data_dir),
-        ("-ReportDir", report_dir),
-        ("-RecommendationDir", recommendation_dir),
-        ("-ModelDir", model_dir),
+        ("--data-dir", data_dir),
+        ("--report-dir", report_dir),
+        ("--recommendation-dir", recommendation_dir),
+        ("--model-dir", model_dir),
     ):
         if path is not None:
             command.extend([flag, Path(path).as_posix()])
 
 
-def _powershell_executable() -> str:
-    return os.environ.get("LOTTERY_POWERSHELL", "powershell")
+def _lottery_cli_command() -> List[str]:
+    cli_exe = os.environ.get("LOTTERY_CLI_EXE", "").strip()
+    if cli_exe:
+        return [cli_exe, "--cli"]
+    python = os.environ.get("LOTTERY_PYTHON", "").strip() or sys.executable
+    return [python, "-m", "lottery_sim.cli"]
 
 
 def _dashboard_daily_options(game_code: str, options: Dict[str, str]) -> List[str]:
     option_specs = [
-        ("count", "-Count", ""),
-        ("mlMinHistory", "-MlMinHistory", "30"),
-        ("mlMinTrain", "-MlMinTrain", ""),
-        ("mlTrainEpochs", "-MlTrainEpochs", ""),
-        ("mlBacktestLimit", "-MlBacktestLimit", ""),
-        ("mlBacktestEpochs", "-MlBacktestEpochs", ""),
-        ("mlRetrainEvery", "-MlRetrainEvery", ""),
+        ("count", "--count", ""),
+        ("mlMinHistory", "--ml-min-history", "30"),
+        ("mlMinTrain", "--ml-min-train", ""),
+        ("mlTrainEpochs", "--ml-train-epochs", ""),
+        ("mlBacktestLimit", "--ml-backtest-limit", ""),
+        ("mlBacktestEpochs", "--ml-backtest-epochs", ""),
+        ("mlRetrainEvery", "--ml-retrain-every", ""),
     ]
 
     bounds = {"count": (1, 1000), "mlMinHistory": (1, 10000),
@@ -535,7 +521,7 @@ def _dashboard_daily_options(game_code: str, options: Dict[str, str]) -> List[st
             raise ValueError("全组合最多1000注，请缩小每位候选数量")
         if mode == "top" and int(options.get("count") or 10) > product:
             raise ValueError("候选数量超过组合池大小")
-        command_options.extend(["-PositionCounts", counts, "-CombinationMode", mode])
+        command_options.extend(["--position-counts", counts, "--combination-mode", mode])
     return command_options
 
 

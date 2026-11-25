@@ -23,11 +23,12 @@ class LauncherTests(unittest.TestCase):
         stream.detach()
 
     def test_application_root_uses_executable_parent_when_frozen(self):
+        app_dir = Path.cwd() / "frozen-app"
         with (
             patch.object(sys, "frozen", True, create=True),
-            patch.object(sys, "executable", r"C:\app\lottery-ai-simulator.exe"),
+            patch.object(sys, "executable", str(app_dir / "lottery-ai-simulator.exe")),
         ):
-            self.assertEqual(launcher.application_root(), Path(r"C:\app"))
+            self.assertEqual(launcher.application_root(), app_dir)
 
     def test_ensure_runtime_dirs_creates_data_and_report_dirs(self):
         root = Path.cwd() / ".test-tmp" / "launcher-runtime"

@@ -47,12 +47,21 @@ class CliPipelineTests(unittest.TestCase):
             self.assertEqual(model.history_until_issue, draws[-1].issue)
 
     def test_daily_position_dry_run_skips_stat_recommend_and_record(self):
-        import subprocess
-        result = subprocess.run(['pwsh', '-NoProfile', '-File', str(Path(__file__).resolve().parents[1]/'scripts/daily.ps1'), '-Game', '3d', '-PositionCounts', '2,2,2', '-CombinationMode', 'full', '-DryRun'], capture_output=True, text=True, encoding='utf-8')
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn('--position-counts 2,2,2 --combination-mode full', result.stdout)
-        self.assertNotIn('[recommend-3d]', result.stdout)
-        self.assertNotIn('[record-3d]', result.stdout)
+        output = io.StringIO()
+        with redirect_stdout(output):
+            cli.main([
+                "workflow-daily",
+                "--game",
+                "3d",
+                "--position-counts",
+                "2,2,2",
+                "--combination-mode",
+                "full",
+                "--dry-run",
+            ])
+        self.assertIn('--position-counts 2,2,2 --combination-mode full', output.getvalue())
+        self.assertNotIn('[recommend-3d]', output.getvalue())
+        self.assertNotIn('[record-3d]', output.getvalue())
 
 
     def test_historical_record_trains_only_selected_history(self):

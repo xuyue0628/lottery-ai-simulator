@@ -66,7 +66,7 @@
 ## 环境要求
 
 - Python 3.10 或更新版本。1.2 的完整测试及 Windows EXE 使用 Python 3.12。
-- PowerShell。项目脚本位于 `scripts/`，适合 Windows PowerShell 直接执行。
+- Web 页面中的“更新开奖数据”“生成推荐报告”和“每日任务”由 Python 工作流执行，不要求安装 PowerShell。`scripts/*.ps1` 仅保留给 Windows 手动自动化和 EXE 打包使用。
 - 浏览器。Web 仪表盘默认监听本机 `127.0.0.1:8765`。
 - 网络访问。更新开奖数据时会从数据源拉取历史开奖文本；也可以通过命令参数传入本地数据文件。
 
@@ -74,7 +74,24 @@
 
 ## 安装依赖
 
-在项目目录打开 PowerShell，推荐使用项目本地虚拟环境运行：
+推荐使用项目本地虚拟环境，并先在项目根目录执行后续命令。
+
+### Linux
+
+Ubuntu/Debian 安装 Python 和虚拟环境支持：
+
+```bash
+sudo apt update
+sudo apt install -y python3 python3-venv python3-pip
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+```
+
+### Windows PowerShell
+
+在项目目录打开 PowerShell：
 
 ```powershell
 python -m venv .venv
@@ -83,9 +100,71 @@ python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 ```
 
-如果只想使用内置本地服务，可以不安装 `requirements.txt`，启动时指定 `--server stdlib`。
+如果只想使用内置本地服务，可以不安装 `requirements.txt`，启动时指定 `--server stdlib`。后台任务仍可通过 Python 工作流执行。
 
-## Web 版本启动
+## 启动 Web 仪表盘
+
+强制使用 FastAPI 服务可避免依赖缺失时自动切换到单用户内置服务。
+
+### Linux
+
+推荐直接运行启动脚本。首次运行会自动创建 `.venv` 并安装 `requirements.txt`，后续直接启动服务：
+
+```bash
+cd /path/to/lottery-ai-simulator
+chmod +x run.sh
+./run.sh
+```
+
+可通过环境变量修改监听地址、端口和浏览器行为：
+
+```bash
+LOTTERY_HOST=0.0.0.0 LOTTERY_PORT=8765 LOTTERY_OPEN_BROWSER=0 ./run.sh
+```
+
+手动启动命令：
+
+```bash
+cd /path/to/lottery-ai-simulator
+source .venv/bin/activate
+export PYTHONPATH="$PWD/src"
+export LOTTERY_ADMIN_USER=admin
+export LOTTERY_ADMIN_PASSWORD='change-this-password'
+python -m lottery_sim.cli dashboard \
+  --server fastapi \
+  --reports "$PWD/reports/latest" \
+  --host 127.0.0.1 \
+  --port 8765 \
+  --no-open
+```
+
+本机浏览器访问 `http://127.0.0.1:8765`。
+
+需要从局域网其他设备访问时，把 `--host` 改为 `0.0.0.0`，访问地址使用服务器实际 IP：
+
+```bash
+python -m lottery_sim.cli dashboard \
+  --server fastapi \
+  --reports "$PWD/reports/latest" \
+  --host 0.0.0.0 \
+  --port 8765 \
+  --no-open
+```
+
+例如访问 `http://192.168.1.10:8765`。对外开放前请设置强管理员密码，并确认防火墙仅向可信网络开放 8765 端口。
+
+也可以使用启动器自动优先加载 FastAPI，依赖不可用时回退到内置单用户服务。启动器会自动把 `src/` 加入导入路径并创建运行目录：
+
+```bash
+source .venv/bin/activate
+export LOTTERY_ADMIN_PASSWORD='change-this-password'
+export LOTTERY_HOST=127.0.0.1
+export LOTTERY_PORT=8765
+export LOTTERY_OPEN_BROWSER=0
+python launcher.py
+```
+
+### Windows PowerShell
 
 推荐使用 FastAPI 服务：
 
@@ -119,6 +198,13 @@ http://127.0.0.1:8765
 
 进入页面后，先选择彩种，再执行“更新开奖数据”“生成推荐报告”或“更新并生成推荐”。
 
+### Linux 常见问题
+
+- `ModuleNotFoundError: No module named 'lottery_sim'`：确认在项目根目录执行，并已设置 `export PYTHONPATH="$PWD/src"`；使用 `python launcher.py` 时不需要手动设置。
+- 端口已被占用：修改 `--port`（例如 `--port 8766`），或先停止占用 8765 端口的旧进程。
+- 局域网无法访问：确认使用 `--host 0.0.0.0`，并在浏览器中使用服务器 IP；同时检查防火墙和端口映射。
+- 更新数据失败：确认运行服务的虚拟环境已激活、服务器可访问开奖数据源，并检查页面中的任务输出。
+
 ## 本地数据
 
 历史开奖数字保存在：
@@ -136,6 +222,17 @@ data/normalized/
 ## 多用户服务模式
 
 FastAPI 仪表盘支持账号登录、注册和用户工作区隔离。服务启动时会根据环境变量创建一个初始账号，新用户也可以在登录页点击“注册新账号”自助创建：
+
+Linux：
+
+```bash
+export LOTTERY_ADMIN_USER=admin
+export LOTTERY_ADMIN_PASSWORD='change-this-password'
+export PYTHONPATH="$PWD/src"
+python -m lottery_sim.cli dashboard --server fastapi --reports "$PWD/reports/latest" --host 0.0.0.0 --port 8765 --no-open
+```
+
+Windows PowerShell：
 
 ```powershell
 $env:LOTTERY_ADMIN_USER='admin'
@@ -172,6 +269,17 @@ reports/users/<username>/
 
 推荐用 Docker Compose 在服务器、NAS 或局域网机器上运行多人服务：
 
+Linux/macOS：
+
+```bash
+export LOTTERY_ADMIN_USER=admin
+export LOTTERY_ADMIN_PASSWORD='change-this-password'
+export TZ=Asia/Shanghai
+docker compose up -d --build
+```
+
+Windows PowerShell：
+
 ```powershell
 $env:LOTTERY_ADMIN_USER='admin'
 $env:LOTTERY_ADMIN_PASSWORD='change-this-password'
@@ -205,7 +313,7 @@ Docker 默认使用 `Asia/Shanghai` 时区。页面里的生成时间来自容�
 docker compose up -d --build --force-recreate
 ```
 
-Docker 镜像包含 PowerShell Core，因为后台工作流复用了 `scripts/` 下的 PowerShell 自动化脚本。
+Web 任务由容器内的 Python 工作流执行，Docker 镜像不依赖 PowerShell。
 
 ## Windows EXE 打包
 

@@ -7,21 +7,32 @@ from lottery_sim import dashboard
 
 
 class PackagingScriptTests(unittest.TestCase):
-    def test_dashboard_command_uses_configured_powershell_executable(self):
-        with patch.dict(os.environ, {"LOTTERY_POWERSHELL": "pwsh"}, clear=False):
+    def test_dashboard_command_uses_python_workflow(self):
+        with patch.dict(
+            os.environ,
+            {"LOTTERY_CLI_EXE": "", "LOTTERY_PYTHON": "/opt/venv/bin/python"},
+            clear=False,
+        ):
             command = dashboard._dashboard_command("daily", "ssq", {})
 
         self.assertIsNotNone(command)
-        self.assertEqual(command[0], "pwsh")
+        self.assertEqual(command[:4], ["/opt/venv/bin/python", "-m", "lottery_sim.cli", "workflow-daily"])
+        self.assertNotIn("pwsh", command)
 
-    def test_dashboard_scripts_can_call_packaged_exe_cli(self):
-        daily = Path("scripts/daily.ps1").read_text(encoding="utf-8")
-        update_data = Path("scripts/update_data.ps1").read_text(encoding="utf-8")
+    def test_workflow_can_call_packaged_exe_cli(self):
+        workflow = Path("src/lottery_sim/workflow.py").read_text(encoding="utf-8")
 
-        self.assertIn("LOTTERY_CLI_EXE", daily)
-        self.assertIn("--cli", daily)
-        self.assertIn("LOTTERY_CLI_EXE", update_data)
-        self.assertIn("--cli", update_data)
+        self.assertIn("LOTTERY_CLI_EXE", workflow)
+        self.assertIn("--cli", workflow)
+
+    def test_run_script_bootstraps_dependencies_and_starts_launcher(self):
+        script = Path("run.sh").read_text(encoding="utf-8")
+
+        self.assertIn("set -euo pipefail", script)
+        self.assertIn("requirements.txt", script)
+        self.assertIn("launcher.py", script)
+        self.assertIn("LOTTERY_HOST", script)
+        self.assertIn("LOTTERY_PORT", script)
 
     def test_build_exe_prefers_venv_python_and_installs_requirements(self):
         build_script = Path("scripts/build_exe.ps1").read_text(encoding="utf-8")
@@ -39,6 +50,8 @@ class PackagingScriptTests(unittest.TestCase):
         self.assertIn("tzdata", dockerfile)
         self.assertIn("/etc/localtime", dockerfile)
         self.assertIn("TZ: ${TZ:-Asia/Shanghai}", compose)
+        self.assertNotIn("LOTTERY_POWERSHELL", dockerfile)
+        self.assertNotIn("LOTTERY_POWERSHELL", compose)
 
     def test_readme_documents_chinese_packaging_and_default_password(self):
         readme = Path("README.md").read_text(encoding="utf-8")

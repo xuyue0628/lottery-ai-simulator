@@ -22,13 +22,13 @@ class DashboardMultiUserTests(unittest.TestCase):
         )
 
         self.assertIsNotNone(command)
-        self.assertIn("-DataDir", command)
+        self.assertIn("--data-dir", command)
         self.assertIn("data/normalized", command)
-        self.assertIn("-ReportDir", command)
+        self.assertIn("--report-dir", command)
         self.assertIn("reports/users/alice/latest", command)
-        self.assertIn("-RecommendationDir", command)
+        self.assertIn("--recommendation-dir", command)
         self.assertIn("data/users/alice/recommendations", command)
-        self.assertIn("-ModelDir", command)
+        self.assertIn("--model-dir", command)
         self.assertIn("data/users/alice/models", command)
 
     def test_start_dashboard_job_blocks_second_running_job_for_same_user(self):

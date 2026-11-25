@@ -469,7 +469,39 @@ def build_parser() -> argparse.ArgumentParser:
     dashboard.add_argument("--no-open", dest="open_browser", action="store_false", help="启动后不自动打开浏览器")
     dashboard.set_defaults(func=_dashboard, open_browser=False)
 
+    workflow_update = subparsers.add_parser("workflow-update", help="执行单个彩种的更新和推荐校验流程")
+    _add_workflow_path_arguments(workflow_update)
+    workflow_update.add_argument("--game", required=True, help="彩种代码")
+    workflow_update.add_argument("--dry-run", action="store_true", help="只输出将执行的命令")
+    workflow_update.set_defaults(func=_workflow_update)
+
+    workflow_daily = subparsers.add_parser("workflow-daily", help="执行单个彩种的完整分析、训练和推荐流程")
+    _add_workflow_path_arguments(workflow_daily)
+    workflow_daily.add_argument("--game", required=True, help="彩种代码")
+    workflow_daily.add_argument("--seed", type=int, default=20260505, help="随机种子")
+    workflow_daily.add_argument("--seeds", default="1,2,3,4,5", help="稳定性分析种子列表")
+    workflow_daily.add_argument("--window", type=int, default=30, help="统计窗口")
+    workflow_daily.add_argument("--count", type=int, default=10, help="候选数量")
+    workflow_daily.add_argument("--position-counts", default="", help="每位候选数，逗号分隔")
+    workflow_daily.add_argument("--combination-mode", choices=("top", "full"), default="top")
+    workflow_daily.add_argument("--ml-min-history", type=int, default=30)
+    workflow_daily.add_argument("--ml-min-train", type=int, default=200)
+    workflow_daily.add_argument("--ml-train-epochs", type=int, default=8)
+    workflow_daily.add_argument("--ml-backtest-epochs", type=int, default=3)
+    workflow_daily.add_argument("--ml-backtest-limit", type=int, default=30)
+    workflow_daily.add_argument("--ml-retrain-every", type=int, default=10)
+    workflow_daily.add_argument("--skip-update", action="store_true", help="沿用本地开奖数据")
+    workflow_daily.add_argument("--dry-run", action="store_true", help="只输出将执行的命令")
+    workflow_daily.set_defaults(func=_workflow_daily)
+
     return parser
+
+
+def _add_workflow_path_arguments(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--data-dir", default="data/normalized")
+    parser.add_argument("--report-dir", default="reports/latest")
+    parser.add_argument("--recommendation-dir", default="data/recommendations")
+    parser.add_argument("--model-dir", default="data/models")
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
@@ -2218,6 +2250,44 @@ def _dashboard(args) -> None:
         host=args.host,
         port=args.port,
         open_browser=args.open_browser,
+    )
+
+
+def _workflow_update(args) -> None:
+    from lottery_sim.workflow import run_update_workflow
+
+    run_update_workflow(
+        game=args.game,
+        data_dir=Path(args.data_dir),
+        report_dir=Path(args.report_dir),
+        recommendation_dir=Path(args.recommendation_dir),
+        dry_run=args.dry_run,
+    )
+
+
+def _workflow_daily(args) -> None:
+    from lottery_sim.workflow import run_daily_workflow
+
+    run_daily_workflow(
+        game=args.game,
+        data_dir=Path(args.data_dir),
+        report_dir=Path(args.report_dir),
+        recommendation_dir=Path(args.recommendation_dir),
+        model_dir=Path(args.model_dir),
+        seed=args.seed,
+        seeds=args.seeds,
+        window=args.window,
+        count=args.count,
+        position_counts=args.position_counts,
+        combination_mode=args.combination_mode,
+        ml_min_history=args.ml_min_history,
+        ml_min_train=args.ml_min_train,
+        ml_train_epochs=args.ml_train_epochs,
+        ml_backtest_epochs=args.ml_backtest_epochs,
+        ml_backtest_limit=args.ml_backtest_limit,
+        ml_retrain_every=args.ml_retrain_every,
+        skip_update=args.skip_update,
+        dry_run=args.dry_run,
     )
 
 

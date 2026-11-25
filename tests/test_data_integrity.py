@@ -10,6 +10,23 @@ from lottery_sim.recommendation_summary import summarize_recommendation_records
 
 
 class DataIntegrityTests(unittest.TestCase):
+    def test_17500_default_urls_use_https(self):
+        from importlib import import_module
+
+        sources = (
+            ("fucai3d_17500", "DEFAULT_17500_3D_ASC_URL"),
+            ("pl3_17500", "DEFAULT_17500_PL3_ASC_URL"),
+            ("pl5_17500", "DEFAULT_17500_PL5_ASC_URL"),
+            ("qxc_17500", "DEFAULT_17500_QXC_ASC_URL"),
+            ("qlc_17500", "DEFAULT_17500_QLC_ASC_URL"),
+            ("kl8_17500", "DEFAULT_17500_KL8_ASC_URL"),
+            ("ssq_17500", "DEFAULT_17500_SSQ_ASC_URL"),
+            ("dlt_17500", "DEFAULT_17500_DLT_ASC_URL"),
+        )
+        for module_name, constant_name in sources:
+            module = import_module(f"lottery_sim.data_sources.{module_name}")
+            self.assertTrue(getattr(module, constant_name).startswith("https://"))
+
     def test_existing_draw_correction_is_applied(self):
         old = Draw3D('2026001','2026-01-01',(1,2,3))
         new = replace(old,numbers=(4,5,6))

@@ -10,7 +10,7 @@ from lottery_sim.data_sources.fucai3d_17500 import fetch_17500_text
 from lottery_sim.models import DltPick, DrawDLT
 
 
-DEFAULT_17500_DLT_ASC_URL = "http://data.17500.cn/dlt_asc.txt"
+DEFAULT_17500_DLT_ASC_URL = "https://data.17500.cn/dlt_asc.txt"
 _DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _ISSUE_RE = re.compile(r"^\d{5,8}$")
 

@@ -8,7 +8,7 @@ from urllib.request import Request, urlopen
 from lottery_sim.models import Draw3D, Pick3D
 
 
-DEFAULT_17500_3D_ASC_URL = "http://data.17500.cn/3d_asc.txt"
+DEFAULT_17500_3D_ASC_URL = "https://data.17500.cn/3d_asc.txt"
 
 _DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _ISSUE_RE = re.compile(r"^\d{5,8}$")
